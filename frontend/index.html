@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI + Standard HTML</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+
+<body>
+    <div class="glob glob-1"></div>
+    <div class="glob glob-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>FastAPI & HTML</h1>
+            <p class="subtitle">A simple, powerful, and beautiful full-stack application orchestrated with Docker.</p>
+        </header>
+
+        <div id="auth-section" class="auth-container">
+            <h3 style="margin-top: 0; color: #c084fc;">Login for Secrets</h3>
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <input type="text" id="username" placeholder="Username (admin)" required>
+                <input type="password" id="password" placeholder="Password (secret)" required>
+                <button type="submit">Login</button>
+            </form>
+            <div id="login-message" style="margin-top: 1rem; font-size: 0.9rem;"></div>
+            <div id="user-info" class="hidden">
+                <p>Logged in as: <span id="current-username" style="font-weight: bold; color: #fff;"></span></p>
+                <button onclick="logout()"
+                    style="background: rgba(255,255,255,0.1); width: auto; padding: 0.5rem 1rem;">Logout</button>
+                <button onclick="fetchSecret()" style="margin-top: 0.5rem;">Get Secret Message</button>
+            </div>
+            <div id="secret-display" class="card secret-card hidden" style="margin-top: 1rem;">
+                <!-- Secret message goes here -->
+            </div>
+        </div>
+
+        <div id="loading" style="text-align: center; font-size: 1.2rem; color: #a5b4fc;">Loading data from backend...
+        </div>
+
+        <div id="content" class="card-grid">
+            <!-- Content will be injected here -->
+        </div>
+
+        <div id="server-status">
+            Connecting to server...
+        </div>
+    </div>
+
+    <script>
+        // Use default if window.env is not defined (e.g. local dev without docker or before substitution)
+        const API_URL = (window.env && window.env.API_URL) ? window.env.API_URL : 'http://localhost:8000';
+        let accessToken = localStorage.getItem('access_token');
+
+        if (accessToken) {
+            decodeAndShowUser(accessToken);
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+            const msgDiv = document.getElementById('login-message');
+
+            const formData = new FormData();
+            formData.append('username', usernameInput);
+            formData.append('password', passwordInput);
+
+            try {
+                const response = await fetch(`${API_URL}/token`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Login failed');
+                }
+
+                const data = await response.json();
+                accessToken = data.access_token;
+                localStorage.setItem('access_token', accessToken);
+
+                msgDiv.style.color = '#4ade80';
+                msgDiv.innerText = 'Login successful!';
+
+                decodeAndShowUser(accessToken);
+
+            } catch (error) {
+                console.error(error);
+                msgDiv.style.color = '#f87171';
+                msgDiv.innerText = 'Invalid credentials';
+            }
+        }
+
+        function decodeAndShowUser(token) {
+            // Simple decode (in production use a lib or rely on /users/me endpoint)
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                document.getElementById('current-username').innerText = payload.sub;
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+            } catch (e) {
+                console.error("Error decoding token", e);
+                logout();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            accessToken = null;
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+            document.getElementById('secret-display').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('login-message').innerText = '';
+        }
+
+        async function fetchSecret() {
+            const secretDisplay = document.getElementById('secret-display');
+
+            try {
+                const response = await fetch(`${API_URL}/api/secret`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    logout();
+                    alert("Session expired. Please login again.");
+                    return;
+                }
+
+                const data = await response.json();
+                secretDisplay.innerHTML = `<h3>Secret Message</h3><p>${data.secret_message}</p>`;
+                secretDisplay.classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function fetchData() {
+            // ... existing fetchData ...
+            const statusDiv = document.getElementById('server-status');
+            const contentDiv = document.getElementById('content');
+            const loadingDiv = document.getElementById('loading');
+
+            try {
+                // Fetch root to check status
+                const rootRes = await fetch(`${API_URL}/`);
+                const rootData = await rootRes.json();
+                statusDiv.innerHTML = `<span class="status-indicator"></span> Connected: ${rootData.message}`;
+
+                // Fetch data items
+                const dataRes = await fetch(`${API_URL}/api/data`);
+                const data = await dataRes.json();
+
+                loadingDiv.style.display = 'none';
+
+                contentDiv.innerHTML = data.items.map(item => `
+                    <div class="card">
+                        <h2>${item.name}</h2>
+                        <p>${item.description}</p>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                loadingDiv.style.display = 'none';
+                statusDiv.style.color = '#f87171';
+                statusDiv.innerHTML = 'Error connecting to backend. Make sure it is running.';
+                contentDiv.innerHTML = `<div class="card" style="grid-column: 1/-1; text-align: center;">
+                    <h2>Connection Failed</h2>
+                    <p>Could not reach the FastAPI backend at ${API_URL}.</p>
+                </div>`;
+            }
+        }
+
+        // Add a small delay for the animation to look nice
+        setTimeout(fetchData, 500);
+    </script>
+</body>
+
+</html>
