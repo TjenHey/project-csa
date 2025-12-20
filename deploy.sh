@@ -8,5 +8,4 @@ else
     git pull
     docker compose down
 fi
-
 docker compose up --build -d
