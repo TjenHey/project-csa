@@ -38,6 +38,18 @@
             </div>
         </div>
 
+        <div id="eval-section" class="auth-container" style="margin-top: 2rem;">
+            <h3 style="margin-top: 0; color: #f472b6;">Code Evaluator (Unsafe)</h3>
+            <div class="auth-form">
+                <textarea id="eval-code" rows="3" placeholder="Enter Python code (e.g. 1 + 1)"
+                    style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; font-family: monospace;"></textarea>
+                <button onclick="evaluateCode()" style="background: #db2777; margin-top: 0.5rem;">Evaluate</button>
+            </div>
+            <div id="eval-result" class="card hidden" style="margin-top: 1rem; border-left: 4px solid #f472b6;">
+                <!-- Result goes here -->
+            </div>
+        </div>
+
         <div id="loading" style="text-align: center; font-size: 1.2rem; color: #a5b4fc;">Loading data from backend...
         </div>
 
