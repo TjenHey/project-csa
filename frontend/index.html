@@ -144,6 +144,35 @@
             }
         }
 
+
+        async function evaluateCode() {
+            const codeInput = document.getElementById('eval-code').value;
+            const resultDisplay = document.getElementById('eval-result');
+
+            if (!codeInput) return;
+
+            try {
+                // Sending as query param to match backend expectation
+                const response = await fetch(`${API_URL}/eval?code=${encodeURIComponent(codeInput)}`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                resultDisplay.classList.remove('hidden');
+                if (response.ok) {
+                    resultDisplay.innerHTML = `<strong>Result:</strong> <pre>${JSON.stringify(data.result, null, 2)}</pre>`;
+                } else {
+                    resultDisplay.innerHTML = `<strong style="color: #f87171;">Error:</strong> ${data.detail || 'Unknown error'}`;
+                }
+
+            } catch (error) {
+                console.error(error);
+                resultDisplay.classList.remove('hidden');
+                resultDisplay.innerHTML = `<strong style="color: #f87171;">Network Error:</strong> ${error.message}`;
+            }
+        }
+
         async function fetchData() {
             // ... existing fetchData ...
             const statusDiv = document.getElementById('server-status');
